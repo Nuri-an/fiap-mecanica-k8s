@@ -1,0 +1,75 @@
+@startuml C4_Component
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Component diagram for API Application - Hexagonal Architecture
+
+Container(webApp, "Web Application", "React/Angular/Vue", "User interface")
+ContainerDb(database, "Database", "PostgreSQL", "Stores data")
+
+Container_Boundary(api, "API Application") {
+    Component(controllers, "REST Controllers", "NestJS Controllers", "Handle HTTP requests and responses")
+    Component(dtos, "DTOs", "TypeScript Classes", "Data transfer objects for API validation")
+    Component(guards, "Auth Guards", "NestJS Guards", "JWT authentication and authorization")
+    
+    Component(useCases, "Use Cases", "TypeScript Classes", "Implement business logic and orchestrate operations")
+    Component(entities, "Domain Entities", "TypeScript Classes", "Core business entities with business rules")
+    Component(valueObjects, "Value Objects", "TypeScript Classes", "Immutable objects (CPF, Email, License Plate)")
+    
+    Component(ports, "Repository Ports", "TypeScript Interfaces", "Define contracts for data access")
+    Component(repositories, "Repository Implementations", "TypeScript Classes", "Implement data access using Prisma")
+    Component(prisma, "Prisma Client", "ORM", "Database access layer")
+}
+
+Rel(webApp, controllers, "Makes API calls to", "JSON/HTTPS")
+Rel(controllers, guards, "Uses for authentication")
+Rel(controllers, dtos, "Validates requests with")
+Rel(controllers, useCases, "Delegates to")
+
+Rel(useCases, entities, "Uses domain logic from")
+Rel(useCases, valueObjects, "Uses")
+Rel(useCases, ports, "Depends on abstractions")
+
+Rel(repositories, ports, "Implements")
+Rel(repositories, prisma, "Uses for database access")
+Rel(prisma, database, "Reads/Writes", "SQL")
+
+note right of entities
+  **Domain Layer (Core)**
+  - Customer
+  - Vehicle
+  - Service
+  - Part
+  - ServiceOrder
+end note
+
+note right of useCases
+  **Application Layer**
+  - CreateCustomer
+  - CreateVehicle
+  - CreateServiceOrder
+  - ApproveServiceOrder
+  - UpdateOrderStatus
+end note
+
+note right of controllers
+  **Presentation Layer**
+  - CustomerController
+  - VehicleController
+  - ServiceController
+  - PartController
+  - ServiceOrderController
+  - AuthController
+end note
+
+note right of repositories
+  **Infrastructure Layer**
+  - CustomerRepository
+  - VehicleRepository
+  - ServiceRepository
+  - PartRepository
+  - ServiceOrderRepository
+end note
+
+@enduml

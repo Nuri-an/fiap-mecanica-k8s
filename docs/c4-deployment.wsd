@@ -1,0 +1,39 @@
+@startuml C4_Deployment
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Deployment diagram for Automotive Workshop Management System
+
+Deployment_Node(dev, "Development Environment", "Docker Compose") {
+    Deployment_Node(devContainer, "Docker Containers") {
+        Container(devApi, "API Application", "NestJS", "Runs on port 3000")
+        ContainerDb(devDb, "PostgreSQL Database", "PostgreSQL 16", "Runs on port 5432")
+    }
+}
+
+Deployment_Node(prod, "Production Environment", "Cloud Platform") {
+    Deployment_Node(webServer, "Web Server", "Nginx") {
+        Container(loadBalancer, "Load Balancer", "Nginx", "Distributes traffic")
+    }
+    
+    Deployment_Node(appServers, "Application Servers", "Kubernetes/Docker") {
+        Deployment_Node(pod1, "Pod 1") {
+            Container(api1, "API Instance 1", "NestJS", "Handles requests")
+        }
+        Deployment_Node(pod2, "Pod 2") {
+            Container(api2, "API Instance 2", "NestJS", "Handles requests")
+        }
+    }
+    
+    Deployment_Node(dbServer, "Database Server", "Managed PostgreSQL") {
+        ContainerDb(prodDb, "Production Database", "PostgreSQL 16", "High availability setup")
+    }
+}
+
+Rel(loadBalancer, api1, "Routes traffic to", "HTTPS")
+Rel(loadBalancer, api2, "Routes traffic to", "HTTPS")
+Rel(api1, prodDb, "Reads/Writes", "SQL/TLS")
+Rel(api2, prodDb, "Reads/Writes", "SQL/TLS")
+
+@enduml

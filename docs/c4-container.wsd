@@ -1,0 +1,28 @@
+@startuml C4_Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Container diagram for Automotive Workshop Management System
+
+Person(customer, "Customer", "Vehicle owner")
+Person(employee, "Workshop Employee", "Workshop staff member")
+
+System_Boundary(c1, "Workshop Management System") {
+    Container(webApp, "Web Application", "React/Angular/Vue", "Provides workshop management functionality via web browser")
+    Container(apiApp, "API Application", "NestJS, TypeScript", "Provides REST API endpoints for all business operations, implements hexagonal architecture")
+    ContainerDb(database, "Database", "PostgreSQL 16+", "Stores customers, vehicles, services, parts, service orders, and users")
+    Container(swagger, "API Documentation", "Swagger UI", "Interactive API documentation and testing interface")
+}
+
+System_Ext(emailSystem, "Email System", "SMTP Server")
+
+Rel(customer, webApp, "Uses", "HTTPS")
+Rel(employee, webApp, "Uses", "HTTPS")
+Rel(employee, swagger, "Tests API", "HTTPS")
+
+Rel(webApp, apiApp, "Makes API calls to", "JSON/HTTPS")
+Rel_Back(apiApp, database, "Reads from and writes to", "SQL/TCP")
+Rel(apiApp, emailSystem, "Sends notifications using", "SMTP")
+
+@enduml

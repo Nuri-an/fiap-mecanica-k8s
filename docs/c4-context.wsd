@@ -1,0 +1,24 @@
+@startuml C4_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title System Context diagram for Automotive Workshop Management System
+
+Person(customer, "Customer", "Vehicle owner who brings their vehicle for service")
+Person(employee, "Workshop Employee", "Staff member who manages service orders and operations")
+Person(admin, "System Administrator", "Manages system users and configurations")
+
+System(workshopSystem, "Workshop Management System", "Enables workshop to manage customers, vehicles, services, parts inventory, and service orders efficiently")
+
+System_Ext(emailSystem, "Email System", "Sends notifications to customers about service order status")
+System_Ext(paymentGateway, "Payment Gateway", "Processes payments for completed services")
+
+Rel(customer, workshopSystem, "Tracks service orders, approves budgets", "HTTPS")
+Rel(employee, workshopSystem, "Manages customers, vehicles, services, parts, and service orders", "HTTPS")
+Rel(admin, workshopSystem, "Administers system users and settings", "HTTPS")
+
+Rel(workshopSystem, emailSystem, "Sends email notifications", "SMTP")
+Rel(workshopSystem, paymentGateway, "Processes payments", "HTTPS/API")
+
+@enduml
