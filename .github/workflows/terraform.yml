@@ -6,11 +6,13 @@ on:
     paths:
       - "**.tf"
       - "modules/**"
+      - "**.yml"
   push:
     branches: ["develop", "main"]
     paths:
       - "**.tf"
       - "modules/**"
+      - "**.yml"
   workflow_dispatch: {}
 
 permissions:
