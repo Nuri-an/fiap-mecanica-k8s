@@ -1,80 +1,167 @@
-name: Terraform (K8s Platform)
+name: Terraform (fiap-mecanica-k8s)
 
 on:
-  push:
-    branches: [develop, main]
   pull_request:
-    branches: [main]
+    branches: ["develop", "main"]
+    paths:
+      - "**.tf"
+      - "modules/**"
+  push:
+    branches: ["develop", "main"]
+    paths:
+      - "**.tf"
+      - "modules/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-k8s-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-  TF_VAR_project_name: fiap-mecanica
-  TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
-  TF_VAR_auth_lambda_invoke_arn: ${{ vars.AUTH_LAMBDA_INVOKE_ARN || '' }}
-  TF_VAR_api_backend_url: ${{ vars.API_BACKEND_URL || '' }}
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_CLOUD_ORGANIZATION: ${{ vars.TF_CLOUD_ORGANIZATION || 'fiap_mecanica' }}
 
 jobs:
-  plan:
-    name: Plan
+  plan-hmg:
+    name: Plan Homolog
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    environment: Homolog
+    env:
+      TF_WORKSPACE: ${{ vars.TF_WORKSPACE_HMG || 'fiap-mecanica-k8s-hmg' }}
+      TF_VAR_project_name: ${{ vars.PROJECT_NAME || 'fiap-mecanica' }}
+      TF_VAR_environment: hmg
+      TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.29' }}
+      TF_VAR_desired_node_count: ${{ vars.DESIRED_NODE_COUNT || '2' }}
+      TF_VAR_min_node_count: ${{ vars.MIN_NODE_COUNT || '2' }}
+      TF_VAR_max_node_count: ${{ vars.MAX_NODE_COUNT || '4' }}
+      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.medium"]' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform init
-        run: terraform -chdir=terraform init
+        run: terraform init -reconfigure
 
-      - name: Terraform fmt
-        run: terraform -chdir=terraform fmt -check
+      - name: Terraform fmt (check)
+        run: terraform fmt -check -recursive
 
       - name: Terraform validate
-        run: terraform -chdir=terraform validate
+        run: terraform validate
 
       - name: Terraform plan
-        env:
-          TF_VAR_environment: ${{ github.ref_name == 'main' && 'prod' || 'hmg' }}
-        run: terraform -chdir=terraform plan
+        run: terraform plan -no-color
 
-  apply:
-    name: Apply
+  plan-prod:
+    name: Plan Production
     runs-on: ubuntu-latest
-    needs: plan
-    if: github.event_name == 'push'
-    permissions:
-      id-token: write
-      contents: read
-    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    environment: Production
+    env:
+      TF_WORKSPACE: ${{ vars.TF_WORKSPACE_PROD || 'fiap-mecanica-k8s-prod' }}
+      TF_VAR_project_name: ${{ vars.PROJECT_NAME || 'fiap-mecanica' }}
+      TF_VAR_environment: prod
+      TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.29' }}
+      TF_VAR_desired_node_count: ${{ vars.DESIRED_NODE_COUNT || '2' }}
+      TF_VAR_min_node_count: ${{ vars.MIN_NODE_COUNT || '2' }}
+      TF_VAR_max_node_count: ${{ vars.MAX_NODE_COUNT || '4' }}
+      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.medium"]' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          terraform_version: "1.5.7"
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform init
+        run: terraform init -reconfigure
+
+      - name: Terraform fmt (check)
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -no-color
+
+  apply-hmg:
+    name: Apply Homolog
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment: Homolog
+    env:
+      TF_WORKSPACE: ${{ vars.TF_WORKSPACE_HMG || 'fiap-mecanica-k8s-hmg' }}
+      TF_VAR_project_name: ${{ vars.PROJECT_NAME || 'fiap-mecanica' }}
+      TF_VAR_environment: hmg
+      TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.29' }}
+      TF_VAR_desired_node_count: ${{ vars.DESIRED_NODE_COUNT || '2' }}
+      TF_VAR_min_node_count: ${{ vars.MIN_NODE_COUNT || '2' }}
+      TF_VAR_max_node_count: ${{ vars.MAX_NODE_COUNT || '4' }}
+      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.medium"]' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform init
-        run: terraform -chdir=terraform init
+        run: terraform init -reconfigure
 
       - name: Terraform apply
-        env:
-          TF_VAR_environment: ${{ github.ref_name == 'main' && 'prod' || 'hmg' }}
-        run: terraform -chdir=terraform apply -auto-approve
+        run: terraform apply -auto-approve
+
+  apply-prod:
+    name: Apply Production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: Production
+    env:
+      TF_WORKSPACE: ${{ vars.TF_WORKSPACE_PROD || 'fiap-mecanica-k8s-prod' }}
+      TF_VAR_project_name: ${{ vars.PROJECT_NAME || 'fiap-mecanica' }}
+      TF_VAR_environment: prod
+      TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.29' }}
+      TF_VAR_desired_node_count: ${{ vars.DESIRED_NODE_COUNT || '2' }}
+      TF_VAR_min_node_count: ${{ vars.MIN_NODE_COUNT || '2' }}
+      TF_VAR_max_node_count: ${{ vars.MAX_NODE_COUNT || '4' }}
+      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.medium"]' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform init
+        run: terraform init -reconfigure
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve
