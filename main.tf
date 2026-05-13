@@ -43,5 +43,4 @@ module "eks" {
   min_node_count      = var.min_node_count
   max_node_count      = var.max_node_count
   node_instance_types = var.node_instance_types
-  aws_region          = var.aws_region
 }
