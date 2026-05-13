@@ -112,20 +112,6 @@ resource "aws_security_group" "nodes" {
     self      = true
   }
 
-  ingress {
-    from_port       = 443
-    to_port         = 443
-    protocol        = "tcp"
-    security_groups = [aws_security_group.cluster.id]
-  }
-
-  ingress {
-    from_port       = 1025
-    to_port         = 65535
-    protocol        = "tcp"
-    security_groups = [aws_security_group.cluster.id]
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
