@@ -76,7 +76,6 @@ resource "aws_security_group" "cluster" {
     from_port       = 443
     to_port         = 443
     protocol        = "tcp"
-    security_groups = [aws_security_group.nodes.id]
   }
 
   egress {
@@ -90,6 +89,15 @@ resource "aws_security_group" "cluster" {
     Name        = "${var.cluster_name}-cluster-sg"
     Environment = var.environment
   }
+}
+resource "aws_security_group_rule" "cluster_ingress_from_nodes" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+
+  security_group_id        = aws_security_group.cluster.id
+  source_security_group_id = aws_security_group.nodes.id
 }
 
 resource "aws_security_group" "nodes" {
@@ -174,7 +182,6 @@ resource "aws_ec2_tag" "public_cluster_tags" {
 resource "aws_launch_template" "nodes" {
   name_prefix            = "${var.cluster_name}-nodes-"
   update_default_version = true
-  vpc_security_group_ids = [aws_security_group.nodes.id]
 
   tag_specifications {
     resource_type = "instance"
@@ -184,6 +191,26 @@ resource "aws_launch_template" "nodes" {
       Environment = var.environment
     }
   }
+}
+
+resource "aws_security_group_rule" "nodes_ingress_from_cluster_443" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+
+  security_group_id        = aws_security_group.nodes.id
+  source_security_group_id = aws_security_group.cluster.id
+}
+
+resource "aws_security_group_rule" "nodes_ingress_from_cluster_ephemeral" {
+  type                     = "ingress"
+  from_port                = 1025
+  to_port                  = 65535
+  protocol                 = "tcp"
+
+  security_group_id        = aws_security_group.nodes.id
+  source_security_group_id = aws_security_group.cluster.id
 }
 
 resource "aws_eks_node_group" "main" {
