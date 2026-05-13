@@ -73,9 +73,9 @@ resource "aws_security_group" "cluster" {
   vpc_id      = var.vpc_id
 
   ingress {
-    from_port       = 443
-    to_port         = 443
-    protocol        = "tcp"
+    from_port = 443
+    to_port   = 443
+    protocol  = "tcp"
   }
 
   egress {
@@ -91,10 +91,10 @@ resource "aws_security_group" "cluster" {
   }
 }
 resource "aws_security_group_rule" "cluster_ingress_from_nodes" {
-  type                     = "ingress"
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
+  type      = "ingress"
+  from_port = 443
+  to_port   = 443
+  protocol  = "tcp"
 
   security_group_id        = aws_security_group.cluster.id
   source_security_group_id = aws_security_group.nodes.id
@@ -194,20 +194,20 @@ resource "aws_launch_template" "nodes" {
 }
 
 resource "aws_security_group_rule" "nodes_ingress_from_cluster_443" {
-  type                     = "ingress"
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
+  type      = "ingress"
+  from_port = 443
+  to_port   = 443
+  protocol  = "tcp"
 
   security_group_id        = aws_security_group.nodes.id
   source_security_group_id = aws_security_group.cluster.id
 }
 
 resource "aws_security_group_rule" "nodes_ingress_from_cluster_ephemeral" {
-  type                     = "ingress"
-  from_port                = 1025
-  to_port                  = 65535
-  protocol                 = "tcp"
+  type      = "ingress"
+  from_port = 1025
+  to_port   = 65535
+  protocol  = "tcp"
 
   security_group_id        = aws_security_group.nodes.id
   source_security_group_id = aws_security_group.cluster.id
