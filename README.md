@@ -56,6 +56,10 @@ Recommended vars in each environment:
 - `MAX_NODE_COUNT`
 - `NODE_INSTANCE_TYPES`
 
+Recommended default:
+
+- `KUBERNETES_VERSION=1.28`
+
 Note:
 
 - AWS credentials can be managed directly in the Terraform Cloud workspace, which is the recommended setup for this repository.
