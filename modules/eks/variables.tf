@@ -6,22 +6,12 @@ variable "environment" {
   type = string
 }
 
-variable "aws_region" {
+variable "cluster_name" {
   type = string
 }
 
-variable "docker_image" {
+variable "kubernetes_version" {
   type = string
-}
-
-variable "database_url" {
-  type      = string
-  sensitive = true
-}
-
-variable "jwt_secret" {
-  type      = string
-  sensitive = true
 }
 
 variable "vpc_id" {
@@ -33,5 +23,21 @@ variable "public_subnet_ids" {
 }
 
 variable "private_subnet_ids" {
+  type = list(string)
+}
+
+variable "desired_node_count" {
+  type = number
+}
+
+variable "min_node_count" {
+  type = number
+}
+
+variable "max_node_count" {
+  type = number
+}
+
+variable "node_instance_types" {
   type = list(string)
 }
