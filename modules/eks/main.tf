@@ -169,7 +169,6 @@ resource "aws_launch_template" "nodes" {
   name_prefix            = "${var.cluster_name}-nodes-"
   update_default_version = true
   image_id               = data.aws_ssm_parameter.eks_ami.value
-  instance_type          = var.node_instance_types[0]
 
   tag_specifications {
     resource_type = "instance"
