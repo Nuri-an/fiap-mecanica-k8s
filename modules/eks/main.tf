@@ -165,25 +165,6 @@ resource "aws_ec2_tag" "public_cluster_tags" {
   value       = "shared"
 }
 
-resource "aws_launch_template" "nodes" {
-  name_prefix            = "${var.cluster_name}-nodes-"
-  update_default_version = true
-  image_id               = data.aws_ssm_parameter.eks_ami.value
-
-  tag_specifications {
-    resource_type = "instance"
-
-    tags = {
-      Name        = "${var.cluster_name}-node"
-      Environment = var.environment
-    }
-  }
-}
-
-data "aws_ssm_parameter" "eks_ami" {
-  name = "/aws/service/eks/optimized-ami/${var.kubernetes_version}/amazon-linux-2/recommended/image_id"
-}
-
 resource "aws_security_group_rule" "nodes_ingress_from_cluster_443" {
   type      = "ingress"
   from_port = 443
@@ -210,11 +191,6 @@ resource "aws_eks_node_group" "main" {
   node_role_arn   = aws_iam_role.nodes.arn
   subnet_ids      = var.private_subnet_ids
   instance_types  = var.node_instance_types
-
-  launch_template {
-    id      = aws_launch_template.nodes.id
-    version = aws_launch_template.nodes.latest_version
-  }
 
   scaling_config {
     desired_size = var.desired_node_count
