@@ -19,7 +19,7 @@ variable "aws_region" {
 variable "kubernetes_version" {
   description = "EKS Kubernetes version"
   type        = string
-  default     = "1.28"
+  default     = "1.29"
 }
 
 variable "desired_node_count" {
@@ -43,5 +43,5 @@ variable "max_node_count" {
 variable "node_instance_types" {
   description = "EC2 instance types for the EKS node group"
   type        = list(string)
-  default     = ["t3.medium"]
+  default     = ["t3.micro"]
 }
