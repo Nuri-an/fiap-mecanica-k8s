@@ -39,11 +39,11 @@ jobs:
       TF_VAR_project_name: ${{ vars.PROJECT_NAME || 'fiap-mecanica' }}
       TF_VAR_environment: hmg
       TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
-      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.28' }}
+      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.29' }}
       TF_VAR_desired_node_count: ${{ vars.DESIRED_NODE_COUNT || '2' }}
       TF_VAR_min_node_count: ${{ vars.MIN_NODE_COUNT || '2' }}
       TF_VAR_max_node_count: ${{ vars.MAX_NODE_COUNT || '4' }}
-      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.medium"]' }}
+      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.micro"]' }}
 
     steps:
       - name: Checkout
@@ -77,11 +77,11 @@ jobs:
       TF_VAR_project_name: ${{ vars.PROJECT_NAME || 'fiap-mecanica' }}
       TF_VAR_environment: prod
       TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
-      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.28' }}
+      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.29' }}
       TF_VAR_desired_node_count: ${{ vars.DESIRED_NODE_COUNT || '2' }}
       TF_VAR_min_node_count: ${{ vars.MIN_NODE_COUNT || '2' }}
       TF_VAR_max_node_count: ${{ vars.MAX_NODE_COUNT || '4' }}
-      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.medium"]' }}
+      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.micro"]' }}
 
     steps:
       - name: Checkout
@@ -115,11 +115,11 @@ jobs:
       TF_VAR_project_name: ${{ vars.PROJECT_NAME || 'fiap-mecanica' }}
       TF_VAR_environment: hmg
       TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
-      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.28' }}
+      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.29' }}
       TF_VAR_desired_node_count: ${{ vars.DESIRED_NODE_COUNT || '2' }}
       TF_VAR_min_node_count: ${{ vars.MIN_NODE_COUNT || '2' }}
       TF_VAR_max_node_count: ${{ vars.MAX_NODE_COUNT || '4' }}
-      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.medium"]' }}
+      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.micro"]' }}
 
     steps:
       - name: Checkout
@@ -147,11 +147,11 @@ jobs:
       TF_VAR_project_name: ${{ vars.PROJECT_NAME || 'fiap-mecanica' }}
       TF_VAR_environment: prod
       TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
-      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.28' }}
+      TF_VAR_kubernetes_version: ${{ vars.KUBERNETES_VERSION || '1.29' }}
       TF_VAR_desired_node_count: ${{ vars.DESIRED_NODE_COUNT || '2' }}
       TF_VAR_min_node_count: ${{ vars.MIN_NODE_COUNT || '2' }}
       TF_VAR_max_node_count: ${{ vars.MAX_NODE_COUNT || '4' }}
-      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.medium"]' }}
+      TF_VAR_node_instance_types: ${{ vars.NODE_INSTANCE_TYPES || '["t3.micro"]' }}
 
     steps:
       - name: Checkout
