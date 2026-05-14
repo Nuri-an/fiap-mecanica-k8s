@@ -58,7 +58,7 @@ Recommended vars in each environment:
 
 Recommended default:
 
-- `KUBERNETES_VERSION=1.29`
+- `KUBERNETES_VERSION=1.31`
 
 Note:
 
