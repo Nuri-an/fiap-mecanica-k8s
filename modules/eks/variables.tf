@@ -41,3 +41,18 @@ variable "max_node_count" {
 variable "node_instance_types" {
   type = list(string)
 }
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+}
+
+variable "internal_alb_arn" {
+  description = "ARN of the internal ALB for EKS services"
+  type        = string
+}
+
+variable "eks_target_group_arn" {
+  description = "ARN of the target group for EKS services"
+  type        = string
+}

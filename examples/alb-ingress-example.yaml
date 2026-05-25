@@ -1,0 +1,111 @@
+---
+# Example Ingress resource that routes traffic through the internal ALB
+# This ingress will be recognized by AWS Load Balancer Controller and:
+# 1. Register pods as targets in the internal ALB target group
+# 2. Create rules in the ALB listener to route traffic
+#
+# Prerequisites:
+# - AWS Load Balancer Controller must be deployed (created by Terraform)
+# - Application pods must be running in the EKS cluster
+#
+# Usage:
+# kubectl apply -f alb-ingress-example.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backend-api-ingress
+  namespace: default
+  annotations:
+    # Specify that this ingress should use the ALB controller
+    kubernetes.io/ingress.class: alb
+    
+    # Use the internal ALB
+    alb.ingress.kubernetes.io/load-balancer-name: "fiap-mecanica-dev-internal-alb"
+    
+    # Target type for ALB (instance = EC2 nodes, ip = pod IP)
+    alb.ingress.kubernetes.io/target-type: instance
+    
+    # Use existing target group (created by Terraform)
+    alb.ingress.kubernetes.io/target-group-attributes: |
+      stickiness.enabled=true,
+      stickiness.type=lb_cookie,
+      stickiness.lb_cookie.duration_seconds=86400
+    
+    # Health check configuration
+    alb.ingress.kubernetes.io/healthcheck-path: /api/v1/health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
+    
+    # Tags for the ALB
+    alb.ingress.kubernetes.io/tags: "Environment=dev,Application=fiap-mecanica"
+
+spec:
+  rules:
+    - host: backend.internal
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 3000
+          
+          - path: /api/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 3000
+
+---
+# Example Service to be used with the Ingress
+# Replace this with your actual application service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: backend-api
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+
+---
+# Example Pod/Deployment for testing
+# Replace this with your actual deployment
+apiVersion: v1
+kind: Pod
+metadata:
+  name: backend-pod-example
+  namespace: default
+  labels:
+    app: backend-api
+spec:
+  containers:
+    - name: api
+      image: your-ecr-repo/fiap-mecanica:latest
+      ports:
+        - containerPort: 3000
+      livenessProbe:
+        httpGet:
+          path: /api/v1/health
+          port: 3000
+        initialDelaySeconds: 10
+        periodSeconds: 10
+      readinessProbe:
+        httpGet:
+          path: /api/v1/health
+          port: 3000
+        initialDelaySeconds: 5
+        periodSeconds: 5

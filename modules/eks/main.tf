@@ -3,7 +3,7 @@ resource "aws_ecr_repository" "main" {
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
-    scan_on_push = true
+    scan_on_push = false
   }
 
   tags = {
@@ -14,7 +14,7 @@ resource "aws_ecr_repository" "main" {
 
 resource "aws_cloudwatch_log_group" "eks" {
   name              = "/aws/eks/${var.cluster_name}/cluster"
-  retention_in_days = 30
+  retention_in_days = 1
 }
 
 resource "aws_iam_role" "cluster" {
@@ -138,7 +138,7 @@ resource "aws_eks_cluster" "main" {
     security_group_ids      = [aws_security_group.cluster.id]
   }
 
-  enabled_cluster_log_types = ["api", "audit", "authenticator"]
+  enabled_cluster_log_types = ["api"]
 
   depends_on = [
     aws_iam_role_policy_attachment.cluster,
@@ -235,4 +235,191 @@ resource "aws_eks_addon" "kube_proxy" {
   addon_name   = "kube-proxy"
 
   depends_on = [aws_eks_node_group.main]
+}
+
+# Data source for OIDC Provider
+data "tls_certificate" "cluster" {
+  url = aws_eks_cluster.main.identity[0].oidc[0].issuer
+}
+
+resource "aws_iam_openid_connect_provider" "cluster" {
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.cluster.certificates[0].sha1_fingerprint]
+  url             = aws_eks_cluster.main.identity[0].oidc[0].issuer
+}
+
+# IAM Role for AWS Load Balancer Controller (IRSA)
+resource "aws_iam_role" "alb_controller" {
+  name = "${var.cluster_name}-alb-controller-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.cluster.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "${replace(aws_iam_openid_connect_provider.cluster.url, "https://", "")}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+            "${replace(aws_iam_openid_connect_provider.cluster.url, "https://", "")}:aud" = "sts.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "alb_controller" {
+  name        = "${var.cluster_name}-alb-controller-policy"
+  description = "Policy for AWS Load Balancer Controller"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "elbv2:DescribeLoadBalancers",
+          "elbv2:DescribeLoadBalancerAttributes",
+          "elbv2:DescribeListeners",
+          "elbv2:DescribeListenerCertificates",
+          "elbv2:DescribeSSLPolicies",
+          "elbv2:DescribeRules",
+          "elbv2:DescribeTargetGroups",
+          "elbv2:DescribeTargetGroupAttributes",
+          "elbv2:DescribeTargetHealth",
+          "elbv2:DescribeTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSecurityGroupRules",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeInstances",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elbv2:ModifyLoadBalancerAttributes",
+          "elbv2:SetIpAddressType",
+          "elbv2:SetSecurityGroups",
+          "elbv2:SetSubnets",
+          "elbv2:DeleteLoadBalancer",
+          "elbv2:CreateTargetGroup",
+          "elbv2:DeleteTargetGroup",
+          "elbv2:CreateLoadBalancer",
+          "elbv2:DeleteListener",
+          "elbv2:CreateListener",
+          "elbv2:ModifyListener",
+          "elbv2:ModifyRule",
+          "elbv2:ModifyTargetGroup",
+          "elbv2:ModifyTargetGroupAttributes",
+          "elbv2:RegisterTargets",
+          "elbv2:DeregisterTargets",
+          "elbv2:CreateRule",
+          "elbv2:DeleteRule"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateSecurityGroup"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateTags"
+        ]
+        Resource = [
+          "arn:aws:ec2:*:*:security-group/*",
+          "arn:aws:ec2:*:*:load-balancer/*"
+        ]
+        Condition = {
+          StringEquals = {
+            "ec2:CreateAction" = [
+              "CreateSecurityGroup",
+              "CreateLoadBalancer"
+            ]
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DeleteTags"
+        ]
+        Resource = [
+          "arn:aws:ec2:*:*:security-group/*",
+          "arn:aws:ec2:*:*:load-balancer/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "alb_controller" {
+  role       = aws_iam_role.alb_controller.name
+  policy_arn = aws_iam_policy.alb_controller.arn
+}
+
+# Helm provider for EKS
+locals {
+  aws_load_balancer_controller_namespace = "kube-system"
+  aws_load_balancer_controller_sa_name   = "aws-load-balancer-controller"
+}
+
+# AWS Load Balancer Controller Helm Chart
+resource "helm_release" "aws_load_balancer_controller" {
+  name       = "aws-load-balancer-controller"
+  repository = "https://aws.github.io/eks-charts"
+  chart      = "aws-load-balancer-controller"
+  version    = "2.6.2"
+  namespace  = local.aws_load_balancer_controller_namespace
+
+  set {
+    name  = "clusterName"
+    value = aws_eks_cluster.main.name
+  }
+
+  set {
+    name  = "serviceAccount.create"
+    value = true
+  }
+
+  set {
+    name  = "serviceAccount.name"
+    value = local.aws_load_balancer_controller_sa_name
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = aws_iam_role.alb_controller.arn
+  }
+
+  depends_on = [
+    aws_eks_node_group.main,
+    aws_iam_role_policy_attachment.alb_controller
+  ]
 }
