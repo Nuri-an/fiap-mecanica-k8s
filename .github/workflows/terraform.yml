@@ -4,7 +4,7 @@ on:
   push:
     branches: [develop, main]
   pull_request:
-    branches: [main]
+    branches: [develop, main]
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -12,6 +12,8 @@ env:
   TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
   TF_VAR_auth_lambda_invoke_arn: ${{ vars.AUTH_LAMBDA_INVOKE_ARN || '' }}
   TF_VAR_api_backend_url: ${{ vars.API_BACKEND_URL || '' }}
+  TF_VAR_enable_datadog: ${{ vars.ENABLE_DATADOG || 'false' }}
+  TF_VAR_datadog_api_key: ${{ secrets.DATADOG_API_KEY || '' }}
 
 jobs:
   plan:
@@ -35,18 +37,18 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform init
-        run: terraform -chdir=terraform init
+        run: terraform init
 
       - name: Terraform fmt
-        run: terraform -chdir=terraform fmt -check
+        run: terraform fmt -check -recursive
 
       - name: Terraform validate
-        run: terraform -chdir=terraform validate
+        run: terraform validate
 
       - name: Terraform plan
         env:
           TF_VAR_environment: ${{ github.ref_name == 'main' && 'prod' || 'hmg' }}
-        run: terraform -chdir=terraform plan
+        run: terraform plan
 
   apply:
     name: Apply
@@ -72,9 +74,9 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform init
-        run: terraform -chdir=terraform init
+        run: terraform init
 
       - name: Terraform apply
         env:
           TF_VAR_environment: ${{ github.ref_name == 'main' && 'prod' || 'hmg' }}
-        run: terraform -chdir=terraform apply -auto-approve
+        run: terraform apply -auto-approve
