@@ -6,19 +6,33 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.27"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.12"
+    }
   }
 
-  cloud {
-    organization = "fiap_mecanica"
-
-    workspaces {
-      tags = ["fiap-mecanica-k8s"]
-    }
+  backend "s3" {
+    bucket = "fiap-mecanica-terraform-state"
+    key    = "k8s/terraform.tfstate"
+    region = "us-east-1"
   }
 }
 
 provider "aws" {
   region = var.aws_region
+}
+
+locals {
+  cluster_name = "${var.project_name}-${var.environment}"
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+  }
 }
 
 module "networking" {
@@ -30,17 +44,49 @@ module "networking" {
 }
 
 module "eks" {
-  source = "./modules/eks"
+  source  = "terraform-aws-modules/eks/aws"
+  version = "~> 20.0"
 
-  project_name        = var.project_name
-  environment         = var.environment
-  kubernetes_version  = var.kubernetes_version
-  cluster_name        = "${var.project_name}-${var.environment}"
-  vpc_id              = module.networking.vpc_id
-  public_subnet_ids   = module.networking.public_subnet_ids
-  private_subnet_ids  = module.networking.private_subnet_ids
-  desired_node_count  = var.desired_node_count
-  min_node_count      = var.min_node_count
-  max_node_count      = var.max_node_count
-  node_instance_types = var.node_instance_types
+  cluster_name    = local.cluster_name
+  cluster_version = var.cluster_version
+
+  vpc_id     = module.networking.vpc_id
+  subnet_ids = module.networking.private_subnet_ids
+
+  enable_irsa                    = true
+  cluster_endpoint_public_access = true
+
+  eks_managed_node_groups = {
+    default = {
+      instance_types = var.node_instance_types
+      desired_size   = var.node_desired_size
+      min_size       = var.node_min_size
+      max_size       = var.node_max_size
+      subnet_ids     = module.networking.private_subnet_ids
+    }
+  }
+
+  tags = local.tags
+}
+
+data "aws_eks_cluster" "this" {
+  name = module.eks.cluster_name
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = module.eks.cluster_name
+}
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.this.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.this.token
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = data.aws_eks_cluster.this.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.this.token
+  }
 }
