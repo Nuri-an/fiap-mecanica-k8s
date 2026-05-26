@@ -6,17 +6,33 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.27"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.12"
+    }
   }
 
   backend "s3" {
     bucket = "fiap-mecanica-terraform-state"
-    key    = "production/terraform.tfstate"
+    key    = "k8s/terraform.tfstate"
     region = "us-east-1"
   }
 }
 
 provider "aws" {
   region = var.aws_region
+}
+
+locals {
+  cluster_name = "${var.project_name}-${var.environment}"
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+  }
 }
 
 module "networking" {
@@ -27,28 +43,50 @@ module "networking" {
   aws_region   = var.aws_region
 }
 
-module "database" {
-  source = "./modules/database"
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "~> 20.0"
 
-  project_name       = var.project_name
-  environment        = var.environment
-  db_username        = var.db_username
-  db_password        = var.db_password
-  vpc_id             = module.networking.vpc_id
-  private_subnet_ids = module.networking.private_subnet_ids
-  app_security_group = module.app.security_group_id
+  cluster_name    = local.cluster_name
+  cluster_version = var.cluster_version
+
+  vpc_id     = module.networking.vpc_id
+  subnet_ids = module.networking.private_subnet_ids
+
+  enable_irsa                    = true
+  cluster_endpoint_public_access = true
+
+  eks_managed_node_groups = {
+    default = {
+      instance_types = var.node_instance_types
+      desired_size   = var.node_desired_size
+      min_size       = var.node_min_size
+      max_size       = var.node_max_size
+      subnet_ids     = module.networking.private_subnet_ids
+    }
+  }
+
+  tags = local.tags
 }
 
-module "app" {
-  source = "./modules/app"
+data "aws_eks_cluster" "this" {
+  name = module.eks.cluster_name
+}
 
-  project_name       = var.project_name
-  environment        = var.environment
-  aws_region         = var.aws_region
-  docker_image       = var.docker_image
-  database_url       = module.database.database_url
-  jwt_secret         = var.jwt_secret
-  vpc_id             = module.networking.vpc_id
-  public_subnet_ids  = module.networking.public_subnet_ids
-  private_subnet_ids = module.networking.private_subnet_ids
+data "aws_eks_cluster_auth" "this" {
+  name = module.eks.cluster_name
+}
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.this.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.this.token
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = data.aws_eks_cluster.this.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.this.token
+  }
 }

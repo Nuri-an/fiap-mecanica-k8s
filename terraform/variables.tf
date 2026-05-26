@@ -5,7 +5,7 @@ variable "project_name" {
 }
 
 variable "environment" {
-  description = "Deployment environment (production, staging)"
+  description = "Deployment environment (prod, hmg)"
   type        = string
   default     = "production"
 }
@@ -16,26 +16,63 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "docker_image" {
-  description = "Docker image URI for the application (e.g. ghcr.io/user/fiap-mecanica:latest)"
+variable "cluster_version" {
+  description = "EKS Kubernetes version"
   type        = string
+  default     = "1.29"
 }
 
-variable "db_username" {
-  description = "PostgreSQL database username"
-  type        = string
-  default     = "fiapmecanica"
-  sensitive   = true
+variable "node_instance_types" {
+  description = "Instance types for managed node groups"
+  type        = list(string)
+  default     = ["t3.medium"]
 }
 
-variable "db_password" {
-  description = "PostgreSQL database password"
+variable "node_desired_size" {
+  description = "Desired node count"
+  type        = number
+  default     = 2
+}
+
+variable "node_min_size" {
+  description = "Minimum node count"
+  type        = number
+  default     = 1
+}
+
+variable "node_max_size" {
+  description = "Maximum node count"
+  type        = number
+  default     = 4
+}
+
+variable "api_backend_url" {
+  description = "Public ALB URL (https://...) for API Gateway proxy integration"
   type        = string
-  sensitive   = true
+  default     = ""
+}
+
+variable "auth_lambda_invoke_arn" {
+  description = "Lambda invoke ARN for /auth/login integration"
+  type        = string
+  default     = ""
 }
 
 variable "jwt_secret" {
   description = "Secret key for JWT token signing"
   type        = string
   sensitive   = true
+}
+
+variable "enable_datadog" {
+  description = "Whether to install Datadog agent via Helm"
+  type        = bool
+  default     = false
+}
+
+variable "datadog_api_key" {
+  description = "Datadog API key (required if enable_datadog=true)"
+  type        = string
+  sensitive   = true
+  default     = ""
 }
