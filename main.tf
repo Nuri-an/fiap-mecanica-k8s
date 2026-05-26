@@ -91,33 +91,16 @@ provider "helm" {
   }
 }
 
-# aws-auth ConfigMap for kubectl access
+# NOTE: aws-auth ConfigMap is created automatically by EKS
+# Do NOT manage it in Terraform to avoid "already exists" errors
+# To add users/roles, use kubectl directly:
+#
+# kubectl patch configmap/aws-auth -n kube-system --type merge -p '{
+#   "data": {
+#     "mapRoles": "- rolearn: arn:aws:iam::ACCOUNT:role/ROLE\n  username: USERNAME\n  groups:\n  - system:masters"
+#   }
+# }'
+#
+# See: https://docs.aws.amazon.com/eks/latest/userguide/add-user-role-access.html
+
 data "aws_caller_identity" "current" {}
-
-data "aws_iam_role" "github_actions" {
-  name = "github-actions-fiap-mecanica-k8s"
-}
-
-resource "kubernetes_config_map" "aws_auth" {
-  metadata {
-    name      = "aws-auth"
-    namespace = "kube-system"
-  }
-
-  data = {
-    mapRoles = yamlencode([
-      {
-        rolearn  = data.aws_iam_role.github_actions.arn
-        username = "github-actions"
-        groups   = ["system:masters"]
-      }
-    ])
-    mapUsers = yamlencode([
-      {
-        userarn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
-        username = "root"
-        groups   = ["system:masters"]
-      }
-    ])
-  }
-}
