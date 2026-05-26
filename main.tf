@@ -69,26 +69,55 @@ module "eks" {
   tags = local.tags
 }
 
-# Commented out for initial infrastructure provisioning
-# Uncomment after cluster is created for deploying apps
-# data "aws_eks_cluster" "this" {
-#   name = module.eks.cluster_name
-# }
-#
-# data "aws_eks_cluster_auth" "this" {
-#   name = module.eks.cluster_name
-# }
-#
-# provider "kubernetes" {
-#   host                   = data.aws_eks_cluster.this.endpoint
-#   cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
-#   token                  = data.aws_eks_cluster_auth.this.token
-# }
-#
-# provider "helm" {
-#   kubernetes {
-#     host                   = data.aws_eks_cluster.this.endpoint
-#     cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
-#     token                  = data.aws_eks_cluster_auth.this.token
-#   }
-# }
+data "aws_eks_cluster" "this" {
+  name = module.eks.cluster_name
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = module.eks.cluster_name
+}
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.this.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.this.token
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = data.aws_eks_cluster.this.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.this.token
+  }
+}
+
+# aws-auth ConfigMap for kubectl access
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_role" "github_actions" {
+  name = "github-actions-fiap-mecanica-k8s"
+}
+
+resource "kubernetes_config_map" "aws_auth" {
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    mapRoles = yamlencode([
+      {
+        rolearn  = data.aws_iam_role.github_actions.arn
+        username = "github-actions"
+        groups   = ["system:masters"]
+      }
+    ])
+    mapUsers = yamlencode([
+      {
+        userarn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        username = "root"
+        groups   = ["system:masters"]
+      }
+    ])
+  }
+}
