@@ -69,6 +69,18 @@ module "eks" {
   tags = local.tags
 }
 
+module "app" {
+  source = "./modules/app"
+
+  project_name           = var.project_name
+  environment            = var.environment
+  api_backend_url        = var.api_backend_url
+  auth_lambda_invoke_arn = var.auth_lambda_invoke_arn
+  jwt_secret             = var.jwt_secret
+  oidc_provider          = module.eks.oidc_provider
+  oidc_provider_arn      = module.eks.oidc_provider_arn
+}
+
 data "aws_eks_cluster" "this" {
   name = module.eks.cluster_name
 }
